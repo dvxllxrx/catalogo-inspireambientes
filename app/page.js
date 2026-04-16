@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,22 +32,26 @@ export default function Login() {
 
     setTimeout(() => {
       setLoading(false);
+
       alert("Login autorizado (simulação)");
-      window.location.href = "/catalogo";
+
+      // 🔥 NAVEGAÇÃO CORRETA NEXT (SEM QUEBRAR ROTAS)
+      router.push("/catalogo");
+
     }, 1500);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white relative overflow-hidden">
 
-      {/* fundo dourado suave */}
+      {/* fundo decorativo */}
       <div className="absolute w-[600px] h-[600px] bg-yellow-600 opacity-10 blur-[140px] rounded-full top-[-200px] left-[-200px]" />
       <div className="absolute w-[500px] h-[500px] bg-yellow-500 opacity-10 blur-[160px] rounded-full bottom-[-200px] right-[-200px]" />
 
-      {/* card login */}
+      {/* card */}
       <div className="w-full max-w-md p-8 bg-zinc-950 border border-yellow-900 rounded-2xl shadow-2xl z-10 animate-fadeIn">
 
-        {/* topo */}
+        {/* título animado */}
         <div className="text-center mb-8">
           <h1 className="text-4xl tracking-[0.4em] text-yellow-500 font-light h-10">
             {typedText}
@@ -56,7 +63,7 @@ export default function Login() {
           </p>
         </div>
 
-        {/* inputs */}
+        {/* email */}
         <input
           type="email"
           placeholder="Email"
@@ -65,6 +72,7 @@ export default function Login() {
           className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded-lg outline-none focus:border-yellow-500"
         />
 
+        {/* senha */}
         <input
           type="password"
           placeholder="Senha"
@@ -86,9 +94,10 @@ export default function Login() {
         <p className="text-[10px] text-center text-zinc-500 mt-6 tracking-widest">
           SOFIA FILES PLATFORM • HIGH LEVEL ACCESS
         </p>
+
       </div>
 
-      {/* animação segura */}
+      {/* animação */}
       <style jsx>{`
         @keyframes fadeIn {
           from {
