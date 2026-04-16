@@ -7,12 +7,6 @@ export default function Catalogo() {
   const [produtos, setProdutos] = useState([]);
   const [busca, setBusca] = useState("");
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const [filtroCategoria, setFiltroCategoria] = useState("");
-  const [filtroCor, setFiltroCor] = useState("");
-  const [filtroMaterial, setFiltroMaterial] = useState("");
-  const [ordenacao, setOrdenacao] = useState("");
 
   const [novoProduto, setNovoProduto] = useState({
     nome: "",
@@ -29,27 +23,38 @@ export default function Catalogo() {
   }, []);
 
   const buscarProdutos = async () => {
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("produtos")
-      .select("*");
-
+    const { data, error } = await supabase.from("produtos").select("*");
     if (!error) setProdutos(data);
-    setLoading(false);
   };
 
   const adicionarProduto = async () => {
-    const { error } = await supabase
-      .from("produtos")
-      .insert([novoProduto]);
+    let imageUrl = "";
 
-    if (error) {
-      alert("Erro ao salvar");
-      return;
+    if (novoProduto.imagem instanceof File) {
+      const file = novoProduto.imagem;
+      const fileName = `${Date.now()}-${file.name}`;
+
+      const { error } = await supabase.storage
+        .from("produtos")
+        .upload(fileName, file);
+
+      if (!error) {
+        const { data } = supabase.storage
+          .from("produtos")
+          .getPublicUrl(fileName);
+
+        imageUrl = data.publicUrl;
+      }
     }
 
-    setMostrarForm(false);
+    await supabase.from("produtos").insert([
+      {
+        ...novoProduto,
+        imagem: imageUrl,
+        preco: Number(novoProduto.preco),
+      },
+    ]);
+
     setNovoProduto({
       nome: "",
       descricao: "",
@@ -60,186 +65,100 @@ export default function Catalogo() {
       material: "",
     });
 
+    setMostrarForm(false);
     buscarProdutos();
   };
 
-  const deletarProduto = async (id) => {
-    const { error } = await supabase
-      .from("produtos")
-      .delete()
-      .eq("id", id);
-
-    if (!error) buscarProdutos();
-  };
-
-  let produtosFiltrados = produtos.filter((p) => {
-    const matchBusca = p.nome
-      ?.toLowerCase()
-      .includes(busca.toLowerCase());
-
-    const matchCategoria = filtroCategoria
-      ? p.categoria === filtroCategoria
-      : true;
-
-    const matchCor = filtroCor ? p.cor === filtroCor : true;
-
-    const matchMaterial = filtroMaterial
-      ? p.material === filtroMaterial
-      : true;
-
-    return matchBusca && matchCategoria && matchCor && matchMaterial;
-  });
-
-  // ordenação
-  if (ordenacao === "menor") {
-    produtosFiltrados.sort((a, b) => a.preco - b.preco);
-  }
-
-  if (ordenacao === "maior") {
-    produtosFiltrados.sort((a, b) => b.preco - a.preco);
-  }
+  const produtosFiltrados = produtos.filter((p) =>
+    p.nome?.toLowerCase().includes(busca.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
-      <h1 className="text-3xl mb-6 font-bold">
-        Catálogo Premium
-      </h1>
+    <div className="min-h-screen bg-[#0a0a0a] text-white px-6 py-10">
+      
+      {/* HEADER LUXO */}
+      <div className="mb-10">
+        <h1 className="text-4xl tracking-wide font-light text-[#c8a24a]">
+          Catálogo de Alto Padrão
+        </h1>
+        <p className="text-gray-400 mt-2">
+          Móveis exclusivos e design refinado
+        </p>
+      </div>
 
-      {/* BUSCA + AÇÕES */}
-      <div className="flex gap-3 mb-4 flex-wrap">
+      {/* BUSCA + BOTÃO */}
+      <div className="flex gap-3 mb-6 flex-wrap">
         <input
-          className="p-2 bg-zinc-800 rounded w-full md:w-1/3"
-          placeholder="Buscar produtos..."
+          placeholder="Buscar peças..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
+          className="w-full md:w-1/3 p-3 bg-[#111111] border border-[#2a2416] rounded-lg outline-none"
         />
 
         <button
           onClick={() => setMostrarForm(!mostrarForm)}
-          className="bg-purple-600 px-4 rounded"
+          className="px-5 py-3 bg-[#a8832f] text-black rounded-lg hover:bg-[#c8a24a] transition"
         >
-          + Produto
-        </button>
-
-        <button
-          onClick={() => {
-            setFiltroCategoria("");
-            setFiltroCor("");
-            setFiltroMaterial("");
-            setOrdenacao("");
-            setBusca("");
-          }}
-          className="bg-zinc-700 px-4 rounded"
-        >
-          Limpar filtros
+          + Novo Produto
         </button>
       </div>
 
-      {/* FILTROS PROFISSIONAIS */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        <select
-          className="p-2 bg-zinc-800 rounded"
-          onChange={(e) => setFiltroCategoria(e.target.value)}
-        >
-          <option value="">Categoria</option>
-          <option value="roupa">Roupa</option>
-          <option value="sapato">Sapato</option>
-          <option value="acessorio">Acessório</option>
-        </select>
-
-        <select
-          className="p-2 bg-zinc-800 rounded"
-          onChange={(e) => setFiltroCor(e.target.value)}
-        >
-          <option value="">Cor</option>
-          <option value="preto">Preto</option>
-          <option value="branco">Branco</option>
-          <option value="azul">Azul</option>
-        </select>
-
-        <select
-          className="p-2 bg-zinc-800 rounded"
-          onChange={(e) => setFiltroMaterial(e.target.value)}
-        >
-          <option value="">Material</option>
-          <option value="algodao">Algodão</option>
-          <option value="couro">Couro</option>
-          <option value="plastico">Plástico</option>
-        </select>
-
-        <select
-          className="p-2 bg-zinc-800 rounded"
-          onChange={(e) => setOrdenacao(e.target.value)}
-        >
-          <option value="">Ordenar</option>
-          <option value="menor">Menor preço</option>
-          <option value="maior">Maior preço</option>
-        </select>
-      </div>
-
-      {/* FORM */}
+      {/* FORMULÁRIO LUXO */}
       {mostrarForm && (
-        <div className="bg-zinc-900 p-4 rounded mb-6">
+        <div className="mb-10 p-6 bg-[#111111] border border-[#2a2416] rounded-xl">
+          
           {Object.keys(novoProduto).map((key) => (
             <input
               key={key}
               placeholder={key}
-              className="w-full p-2 mb-2 rounded bg-zinc-800"
+              className="w-full mb-3 p-3 bg-[#0a0a0a] border border-[#2a2416] rounded-lg outline-none"
               onChange={(e) =>
                 setNovoProduto({
                   ...novoProduto,
-                  [key]: e.target.value,
+                  [key]:
+                    key === "imagem"
+                      ? e.target.files?.[0] || e.target.value
+                      : e.target.value,
                 })
               }
+              type={key === "imagem" ? "file" : "text"}
             />
           ))}
 
           <button
             onClick={adicionarProduto}
-            className="bg-green-600 px-4 py-2 rounded"
+            className="mt-4 px-5 py-3 bg-[#a8832f] text-black rounded-lg hover:bg-[#c8a24a]"
           >
             Salvar Produto
           </button>
         </div>
       )}
 
-      {/* LOADING */}
-      {loading && <p>Carregando produtos...</p>}
-
-      {/* GRID */}
-      {!loading && produtosFiltrados.length === 0 && (
-        <p>Nenhum produto encontrado.</p>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {produtosFiltrados.map((produto) => (
+      {/* GRID LUXO */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {produtosFiltrados.map((p) => (
           <div
-            key={produto.id}
-            className="bg-zinc-900 p-4 rounded-lg hover:scale-105 transition"
+            key={p.id}
+            className="bg-[#111111] border border-[#2a2416] rounded-2xl overflow-hidden hover:scale-[1.02] transition duration-300"
           >
             <img
-              src={produto.imagem}
-              className="w-full h-40 object-cover rounded mb-2"
+              src={p.imagem}
+              className="w-full h-48 object-cover"
             />
 
-            <h2 className="text-lg font-bold">
-              {produto.nome}
-            </h2>
+            <div className="p-5">
+              <h2 className="text-lg font-light text-[#c8a24a]">
+                {p.nome}
+              </h2>
 
-            <p className="text-sm text-gray-400">
-              {produto.descricao}
-            </p>
+              <p className="text-sm text-gray-400 mt-1">
+                {p.descricao}
+              </p>
 
-            <p className="mt-2 font-bold">
-              R$ {produto.preco}
-            </p>
-
-            <button
-              onClick={() => deletarProduto(produto.id)}
-              className="mt-3 text-red-400 text-sm"
-            >
-              Excluir
-            </button>
+              <p className="mt-3 text-[#c8a24a] font-semibold">
+                R$ {p.preco}
+              </p>
+            </div>
           </div>
         ))}
       </div>
