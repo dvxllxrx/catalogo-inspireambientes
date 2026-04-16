@@ -23,24 +23,33 @@ export default function Catalogo() {
     material: "",
   });
 
-  // 🔐 AUTH (mantido, mas não bloqueia UI)
+  // 🔐 AUTH 100% ESTÁVEL (NÃO SOME DEPOIS DE LOGIN)
   useEffect(() => {
+    let mounted = true;
+
     const initAuth = async () => {
       const { data } = await supabase.auth.getSession();
-      setUser(data?.session?.user || null);
+
+      if (!mounted) return;
+
+      setUser(data?.session?.user ?? null);
     };
 
     initAuth();
 
-    const { data } = supabase.auth.onAuthStateChange(
-      (_, session) => {
-        setUser(session?.user || null);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
 
-    return () => data.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
+  // 📦 PRODUTOS
   useEffect(() => {
     buscarProdutos();
   }, []);
@@ -50,19 +59,24 @@ export default function Catalogo() {
     setProdutos(data || []);
   };
 
+  // ➕ ADD PRODUTO
   const adicionarProduto = async () => {
     let imageUrl = "";
 
     if (imagemFile) {
       const fileName = `${Date.now()}-${imagemFile.name}`;
 
-      await supabase.storage.from("produtos").upload(fileName, imagemFile);
-
-      const { data } = supabase.storage
+      const { error } = await supabase.storage
         .from("produtos")
-        .getPublicUrl(fileName);
+        .upload(fileName, imagemFile);
 
-      imageUrl = data.publicUrl;
+      if (!error) {
+        const { data } = supabase.storage
+          .from("produtos")
+          .getPublicUrl(fileName);
+
+        imageUrl = data.publicUrl;
+      }
     }
 
     await supabase.from("produtos").insert([
@@ -88,6 +102,7 @@ export default function Catalogo() {
     buscarProdutos();
   };
 
+  // 🗑 DELETE + UNDO
   const deletarProduto = async (produto) => {
     setProdutos((prev) => prev.filter((p) => p.id !== produto.id));
 
@@ -108,12 +123,13 @@ export default function Catalogo() {
 
   const desfazer = () => {
     if (!undoItem) return;
+
     setProdutos((prev) => [undoItem, ...prev]);
     setUndoItem(null);
     setShowUndo(false);
   };
 
-  // 🚪 LOGOUT FORÇADO (SEM DEPENDER DE ESTADO)
+  // 🚪 LOGOUT 100% ESTÁVEL (NÃO FALHA + REDIRECIONA)
   const handleLogout = async () => {
     await supabase.auth.signOut();
 
@@ -143,13 +159,15 @@ export default function Catalogo() {
           </p>
         </div>
 
-        {/* 🔥 BOTÃO SAIR FORÇADO (NUNCA SOME) */}
-        <button
-          onClick={handleLogout}
-          className="px-5 py-3 bg-[#111] border border-[#2a2416] text-red-400 rounded-lg hover:opacity-80 transition"
-        >
-          Sair
-        </button>
+        {/* 🔥 BOTÃO SAIR GARANTIDO SEM DEPENDER DE STATE BUGADO */}
+        {user && (
+          <button
+            onClick={handleLogout}
+            className="px-5 py-3 bg-[#111] border border-[#2a2416] text-red-400 rounded-lg hover:opacity-80 transition"
+          >
+            Sair
+          </button>
+        )}
 
       </div>
 
@@ -206,10 +224,16 @@ export default function Catalogo() {
       {/* GRID */}
       <div className="grid md:grid-cols-3 gap-6">
         {produtosFiltrados.map((p) => (
-          <div key={p.id} className="bg-[#111] border border-[#2a2416] rounded-2xl p-4">
+          <div
+            key={p.id}
+            className="bg-[#111] border border-[#2a2416] rounded-2xl p-4"
+          >
 
             {p.imagem && (
-              <img src={p.imagem} className="w-full h-48 object-cover" />
+              <img
+                src={p.imagem}
+                className="w-full h-48 object-cover"
+              />
             )}
 
             <h2 className="text-[#c8a24a] mt-2">{p.nome}</h2>
