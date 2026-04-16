@@ -13,7 +13,7 @@ export default function Login() {
 
   const fullText = "SOFIA";
 
-  // efeito de digitação seguro
+  // efeito de digitação
   useEffect(() => {
     let i = 0;
 
@@ -22,36 +22,37 @@ export default function Login() {
       i++;
 
       if (i > fullText.length) clearInterval(interval);
-    }, 180);
+    }, 120);
 
     return () => clearInterval(interval);
   }, []);
 
   const handleLogin = () => {
+    if (!email || !senha) {
+      alert("Preencha email e senha");
+      return;
+    }
+
     setLoading(true);
 
     setTimeout(() => {
+      // 🔥 CRIA SESSÃO FAKE
+      localStorage.setItem("admin", "true");
+
       setLoading(false);
 
-      alert("Login autorizado (simulação)");
-
-      // 🔥 NAVEGAÇÃO CORRETA NEXT (SEM QUEBRAR ROTAS)
       router.push("/catalogo");
-
-    }, 1500);
+    }, 800);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black text-white relative overflow-hidden">
 
-      {/* fundo decorativo */}
       <div className="absolute w-[600px] h-[600px] bg-yellow-600 opacity-10 blur-[140px] rounded-full top-[-200px] left-[-200px]" />
       <div className="absolute w-[500px] h-[500px] bg-yellow-500 opacity-10 blur-[160px] rounded-full bottom-[-200px] right-[-200px]" />
 
-      {/* card */}
-      <div className="w-full max-w-md p-8 bg-zinc-950 border border-yellow-900 rounded-2xl shadow-2xl z-10 animate-fadeIn">
+      <div className="w-full max-w-md p-8 bg-zinc-950 border border-yellow-900 rounded-2xl shadow-2xl z-10">
 
-        {/* título animado */}
         <div className="text-center mb-8">
           <h1 className="text-4xl tracking-[0.4em] text-yellow-500 font-light h-10">
             {typedText}
@@ -63,58 +64,35 @@ export default function Login() {
           </p>
         </div>
 
-        {/* email */}
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded-lg outline-none focus:border-yellow-500"
+          className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded-lg"
         />
 
-        {/* senha */}
         <input
           type="password"
           placeholder="Senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          className="w-full mb-6 p-3 bg-black border border-zinc-800 rounded-lg outline-none focus:border-yellow-500"
+          className="w-full mb-6 p-3 bg-black border border-zinc-800 rounded-lg"
         />
 
-        {/* botão */}
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full py-3 bg-yellow-600 text-black font-semibold rounded-lg hover:bg-yellow-500 transition flex items-center justify-center"
+          className="w-full py-3 bg-yellow-600 text-black font-semibold rounded-lg"
         >
           {loading ? "Entrando..." : "Entrar no Sistema"}
         </button>
 
-        {/* rodapé */}
         <p className="text-[10px] text-center text-zinc-500 mt-6 tracking-widest">
           SOFIA FILES PLATFORM • HIGH LEVEL ACCESS
         </p>
 
       </div>
-
-      {/* animação */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.8s ease-out;
-        }
-      `}</style>
-
     </div>
   );
 }
