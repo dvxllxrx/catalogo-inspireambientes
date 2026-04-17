@@ -10,9 +10,8 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [checking, setChecking] = useState(true);
 
-  // 🔐 CHECA SESSÃO ANTES DE MOSTRAR TELA
   useEffect(() => {
     const check = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -22,17 +21,14 @@ export default function Login() {
         return;
       }
 
-      setCheckingSession(false);
+      setChecking(false);
     };
 
     check();
   }, []);
 
   const handleLogin = async () => {
-    if (!email || !senha) {
-      alert("Preencha email e senha");
-      return;
-    }
+    if (!email || !senha) return;
 
     setLoading(true);
 
@@ -51,31 +47,47 @@ export default function Login() {
     router.replace("/catalogo");
   };
 
-  // 🔥 EVITA FLICKER (NÃO MOSTRA NADA ATÉ CHECAR SESSÃO)
-  if (checkingSession) {
+  if (checking) {
     return (
       <div className="h-screen flex items-center justify-center bg-black text-white">
-        <p className="animate-pulse text-zinc-400">
-          Verificando sessão...
+        <p className="text-zinc-400 animate-pulse">
+          Carregando sistema...
         </p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-black text-white">
-      <div className="w-full max-w-md p-8 bg-zinc-950 border border-yellow-900 rounded-2xl">
+    <div className="h-screen flex items-center justify-center bg-black overflow-hidden relative">
 
-        <h1 className="text-3xl text-yellow-500 mb-6 text-center">
-          SOFIA LOGIN
+      {/* BACKGROUND ANIMADO */}
+      <div className="absolute inset-0">
+        <div className="absolute w-[600px] h-[600px] bg-cyan-500/20 blur-[150px] rounded-full top-[-150px] left-[-150px] animate-pulse" />
+        <div className="absolute w-[600px] h-[600px] bg-purple-600/20 blur-[150px] rounded-full bottom-[-150px] right-[-150px] animate-pulse" />
+
+        {/* camada extra movimento */}
+        <div className="absolute inset-0 bg-gradient-to-r from-cyan-900/10 via-black to-purple-900/10 animate-gradientMove" />
+      </div>
+
+      {/* CARD */}
+      <div className="w-full max-w-md p-8 rounded-2xl border border-zinc-800 bg-black/60 backdrop-blur-xl z-10 shadow-2xl">
+
+        {/* LOGO SOFIA DIVIDIDO */}
+        <h1 className="text-5xl font-bold text-center mb-2 tracking-widest">
+          <span className="text-cyan-400">SOF</span>
+          <span className="text-purple-500">IA</span>
         </h1>
+
+        <p className="text-center text-zinc-400 mb-8 text-sm">
+          Software + Intelligence Artificial
+        </p>
 
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded"
+          className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded-lg focus:border-cyan-400 outline-none"
         />
 
         <input
@@ -83,18 +95,36 @@ export default function Login() {
           placeholder="Senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          className="w-full mb-6 p-3 bg-black border border-zinc-800 rounded"
+          className="w-full mb-6 p-3 bg-black border border-zinc-800 rounded-lg focus:border-purple-500 outline-none"
         />
 
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full py-3 bg-yellow-600 text-black rounded"
+          className="w-full py-3 font-semibold rounded-lg transition bg-gradient-to-r from-cyan-500 to-purple-600 text-black hover:opacity-90"
         >
           {loading ? "Entrando..." : "Entrar"}
         </button>
 
+        <p className="text-xs text-center text-zinc-500 mt-6">
+          Powered by Supabase Auth
+        </p>
       </div>
+
+      {/* CSS ANIMADO (gradient move) */}
+      <style jsx>{`
+        .animate-gradientMove {
+          background-size: 200% 200%;
+          animation: move 6s ease infinite;
+        }
+
+        @keyframes move {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
+
     </div>
   );
 }
