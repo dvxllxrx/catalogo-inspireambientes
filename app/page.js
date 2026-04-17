@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "../lib/supabase";
 
 export default function Login() {
   const router = useRouter();
@@ -9,25 +10,25 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
-  const [typedText, setTypedText] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
 
-  const fullText = "SOFIA";
-
-  // efeito de digitação
+  // 🔐 CHECA SESSÃO ANTES DE MOSTRAR TELA
   useEffect(() => {
-    let i = 0;
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    const interval = setInterval(() => {
-      setTypedText(fullText.slice(0, i));
-      i++;
+      if (user) {
+        router.replace("/catalogo");
+        return;
+      }
 
-      if (i > fullText.length) clearInterval(interval);
-    }, 120);
+      setCheckingSession(false);
+    };
 
-    return () => clearInterval(interval);
+    check();
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !senha) {
       alert("Preencha email e senha");
       return;
@@ -35,41 +36,46 @@ export default function Login() {
 
     setLoading(true);
 
-    setTimeout(() => {
-      // 🔥 CRIA SESSÃO FAKE
-      localStorage.setItem("admin", "true");
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha,
+    });
 
-      setLoading(false);
+    setLoading(false);
 
-      router.push("/catalogo");
-    }, 800);
+    if (error || !data.session) {
+      alert("Login inválido");
+      return;
+    }
+
+    router.replace("/catalogo");
   };
 
+  // 🔥 EVITA FLICKER (NÃO MOSTRA NADA ATÉ CHECAR SESSÃO)
+  if (checkingSession) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-black text-white">
+        <p className="animate-pulse text-zinc-400">
+          Verificando sessão...
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black text-white relative overflow-hidden">
+    <div className="h-screen flex items-center justify-center bg-black text-white">
+      <div className="w-full max-w-md p-8 bg-zinc-950 border border-yellow-900 rounded-2xl">
 
-      <div className="absolute w-[600px] h-[600px] bg-yellow-600 opacity-10 blur-[140px] rounded-full top-[-200px] left-[-200px]" />
-      <div className="absolute w-[500px] h-[500px] bg-yellow-500 opacity-10 blur-[160px] rounded-full bottom-[-200px] right-[-200px]" />
-
-      <div className="w-full max-w-md p-8 bg-zinc-950 border border-yellow-900 rounded-2xl shadow-2xl z-10">
-
-        <div className="text-center mb-8">
-          <h1 className="text-4xl tracking-[0.4em] text-yellow-500 font-light h-10">
-            {typedText}
-            <span className="animate-pulse">|</span>
-          </h1>
-
-          <p className="text-xs text-zinc-400 mt-2 tracking-widest">
-            FILES PLATFORM BY IA
-          </p>
-        </div>
+        <h1 className="text-3xl text-yellow-500 mb-6 text-center">
+          SOFIA LOGIN
+        </h1>
 
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded-lg"
+          className="w-full mb-4 p-3 bg-black border border-zinc-800 rounded"
         />
 
         <input
@@ -77,20 +83,16 @@ export default function Login() {
           placeholder="Senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
-          className="w-full mb-6 p-3 bg-black border border-zinc-800 rounded-lg"
+          className="w-full mb-6 p-3 bg-black border border-zinc-800 rounded"
         />
 
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full py-3 bg-yellow-600 text-black font-semibold rounded-lg"
+          className="w-full py-3 bg-yellow-600 text-black rounded"
         >
-          {loading ? "Entrando..." : "Entrar no Sistema"}
+          {loading ? "Entrando..." : "Entrar"}
         </button>
-
-        <p className="text-[10px] text-center text-zinc-500 mt-6 tracking-widest">
-          SOFIA FILES PLATFORM • HIGH LEVEL ACCESS
-        </p>
 
       </div>
     </div>

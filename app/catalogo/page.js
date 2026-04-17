@@ -8,7 +8,10 @@ export default function Catalogo() {
   const [busca, setBusca] = useState("");
   const [mostrarForm, setMostrarForm] = useState(false);
   const [imagemFile, setImagemFile] = useState(null);
+
   const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
+
   const [aba, setAba] = useState("showroom");
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
 
@@ -24,10 +27,28 @@ export default function Catalogo() {
     industria: "",
   });
 
-  // AUTH LOCAL
+  // 🔐 AUTH REAL (SUBSTITUI LOCALSTORAGE)
   useEffect(() => {
-    const admin = localStorage.getItem("admin");
-    if (admin === "true") setUser({ admin: true });
+    const initAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = "/";
+        return;
+      }
+
+      setUser(user);
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      setRole(data?.role || "user");
+    };
+
+    initAuth();
   }, []);
 
   // BUSCAR PRODUTOS
@@ -106,14 +127,13 @@ export default function Catalogo() {
     }
   };
 
-  // DELETE
   const deletarProduto = async (produto) => {
     await supabase.from("produtos").delete().eq("id", produto.id);
     buscarProdutos();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("admin");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     window.location.href = "/";
   };
 
@@ -134,10 +154,17 @@ export default function Catalogo() {
           <h1 className="text-3xl text-yellow-500">
             Showroom by SOFIA Platform IA
           </h1>
-          <p>MODE: {user ? "ADMIN" : "VISITANTE"}</p>
+
+          <p>
+            MODE: {role === "admin" ? "ADMIN" : "VISITANTE"}
+          </p>
         </div>
 
-        {user && <button onClick={handleLogout}>Sair</button>}
+        {user && (
+          <button onClick={handleLogout}>
+            Sair
+          </button>
+        )}
       </div>
 
       {/* ABAS */}
@@ -154,18 +181,17 @@ export default function Catalogo() {
         className="mb-4 p-2 bg-[#111] w-full"
       />
 
-      {/* ADD */}
-      {user && (
+      {/* ADD (SÓ ADMIN AGORA) */}
+      {role === "admin" && (
         <button onClick={() => setMostrarForm(!mostrarForm)}>
           + Produto
         </button>
       )}
 
       {/* FORM */}
-      {mostrarForm && (
+      {mostrarForm && role === "admin" && (
         <div className="bg-[#111] p-4 mb-6">
 
-          {/* INPUTS */}
           {Object.keys(novoProduto).map((key) => {
             if (key === "tipo") return null;
 
@@ -185,7 +211,6 @@ export default function Catalogo() {
             );
           })}
 
-          {/* SELECT TIPO */}
           <select
             value={novoProduto.tipo}
             onChange={(e) =>
@@ -218,7 +243,7 @@ export default function Catalogo() {
             <h2>{p.nome}</h2>
             <p>R$ {p.preco}</p>
 
-            {user && (
+            {role === "admin" && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -232,59 +257,24 @@ export default function Catalogo() {
         ))}
       </div>
 
-      {/* MODAL PREMIUM */}
+      {/* MODAL */}
       {produtoSelecionado && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center"
           onClick={() => setProdutoSelecionado(null)}
         >
           <div
-            className="bg-[#111] max-w-4xl w-full mx-4 rounded-2xl overflow-hidden border border-[#2a2416]"
+            className="bg-[#111] max-w-4xl w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="h-[300px]">
-              <img
-                src={produtoSelecionado.imagem}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <img src={produtoSelecionado.imagem} />
 
-            <div className="p-6 grid md:grid-cols-2 gap-6">
-              <div>
-                <h2 className="text-2xl text-yellow-500">
-                  {produtoSelecionado.nome}
-                </h2>
-                <p className="text-gray-400 mt-2">
-                  {produtoSelecionado.descricao}
-                </p>
-                <p className="mt-4 text-lg">
-                  R$ {produtoSelecionado.preco}
-                </p>
-              </div>
+            <h2>{produtoSelecionado.nome}</h2>
+            <p>{produtoSelecionado.descricao}</p>
 
-              <div className="text-sm space-y-2">
-                <p><b>Categoria:</b> {produtoSelecionado.categoria}</p>
-                <p><b>Cor:</b> {produtoSelecionado.cor}</p>
-                <p><b>Material:</b> {produtoSelecionado.material || "-"}</p>
-                <p><b>Medidas:</b> {produtoSelecionado.medidas || "-"}</p>
-                <p><b>Indústria:</b> {produtoSelecionado.industria || "-"}</p>
-                <p>
-                  <b>Tipo:</b>{" "}
-                  {produtoSelecionado.tipo === "encomenda"
-                    ? "Sob Encomenda"
-                    : "Showroom"}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 text-right border-t border-[#2a2416]">
-              <button
-                onClick={() => setProdutoSelecionado(null)}
-                className="px-4 py-2 bg-yellow-500 text-black rounded"
-              >
-                Fechar
-              </button>
-            </div>
+            <button onClick={() => setProdutoSelecionado(null)}>
+              Fechar
+            </button>
           </div>
         </div>
       )}
