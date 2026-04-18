@@ -16,30 +16,33 @@ export default function Catalogo() {
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [editandoProduto, setEditandoProduto] = useState(null);
 
-const [novoProduto, setNovoProduto] = useState({
-  nome: "",
-  descricao: "",
-  preco: "",
-  categoria: "",
-  cor: "",
-  material: "",
-  medidas: "",
-  tipo: "showroom",
-  industria: "",
-});
+  // ✅ NOVO: state do botão copiar
+  const [copiado, setCopiado] = useState(false);
 
-const [filtrosAvancados, setFiltrosAvancados] = useState({
-  precoMin: "",
-  precoMax: "",
-  cor: "",
-  material: "",
-  medidas: "",
-  industria: "",
-  categoria: "",
-  ordemPreco: "",
-});
+  const [novoProduto, setNovoProduto] = useState({
+    nome: "",
+    descricao: "",
+    preco: "",
+    categoria: "",
+    cor: "",
+    material: "",
+    medidas: "",
+    tipo: "showroom",
+    industria: "",
+  });
 
-const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [filtrosAvancados, setFiltrosAvancados] = useState({
+    precoMin: "",
+    precoMax: "",
+    cor: "",
+    material: "",
+    medidas: "",
+    industria: "",
+    categoria: "",
+    ordemPreco: "",
+  });
+
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   // AUTH
   useEffect(() => {
@@ -74,7 +77,36 @@ const [mostrarFiltros, setMostrarFiltros] = useState(false);
     setProdutos(data || []);
   };
 
-  // ✅ ADD PRODUTO (COM UPLOAD CORRIGIDO)
+  // ✅ NOVO: formata preço em R$ 20.265,00
+  const formatarPreco = (valor) =>
+    Number(valor).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+
+  // ✅ NOVO: copia ficha formatada para área de transferência
+  const copiarFicha = async (produto) => {
+    const texto = `🛋️ *${produto.nome}*
+
+📋 *Descrição:* ${produto.descricao}
+
+• *Cor:* ${produto.cor}
+• *Material:* ${produto.material}
+• *Medidas:* ${produto.medidas}
+• *Categoria:* ${produto.categoria}
+• *Indústria:* ${produto.industria}
+• *Tipo:* ${produto.tipo}
+
+💰 *Preço:* ${formatarPreco(produto.preco)}
+
+_Inspire Ambientes — inspirados em você._`;
+
+    await navigator.clipboard.writeText(texto);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2500);
+  };
+
+  // ADD PRODUTO
   const adicionarProduto = async () => {
     try {
       let imageUrl = "https://via.placeholder.com/400x300";
@@ -128,7 +160,6 @@ const [mostrarFiltros, setMostrarFiltros] = useState(false);
       setImagemFile(null);
       setMostrarForm(false);
       buscarProdutos();
-
     } catch (err) {
       alert("Erro inesperado");
       console.error(err);
@@ -157,50 +188,39 @@ const [mostrarFiltros, setMostrarFiltros] = useState(false);
     window.location.href = "/";
   };
 
-const produtosFiltrados = produtos
-  .filter((p) => {
-    if ((p.tipo || "showroom") !== aba) return false;
+  const produtosFiltrados = produtos
+    .filter((p) => {
+      if ((p.tipo || "showroom") !== aba) return false;
 
-    const texto = `${p.nome || ""} ${p.descricao || ""} ${p.categoria || ""}`
-      .toLowerCase();
+      const texto = `${p.nome || ""} ${p.descricao || ""} ${p.categoria || ""}`
+        .toLowerCase();
 
-    if (!texto.includes(busca.toLowerCase())) return false;
+      if (!texto.includes(busca.toLowerCase())) return false;
 
-    if (filtrosAvancados.precoMin && Number(p.preco) < Number(filtrosAvancados.precoMin)) return false;
-    if (filtrosAvancados.precoMax && Number(p.preco) > Number(filtrosAvancados.precoMax)) return false;
+      if (filtrosAvancados.precoMin && Number(p.preco) < Number(filtrosAvancados.precoMin)) return false;
+      if (filtrosAvancados.precoMax && Number(p.preco) > Number(filtrosAvancados.precoMax)) return false;
+      if (filtrosAvancados.cor && !p.cor?.toLowerCase().includes(filtrosAvancados.cor.toLowerCase())) return false;
+      if (filtrosAvancados.material && !p.material?.toLowerCase().includes(filtrosAvancados.material.toLowerCase())) return false;
+      if (filtrosAvancados.categoria && !p.categoria?.toLowerCase().includes(filtrosAvancados.categoria.toLowerCase())) return false;
 
-    if (filtrosAvancados.cor && !p.cor?.toLowerCase().includes(filtrosAvancados.cor.toLowerCase())) return false;
-    if (filtrosAvancados.material && !p.material?.toLowerCase().includes(filtrosAvancados.material.toLowerCase())) return false;
-    if (filtrosAvancados.categoria && !p.categoria?.toLowerCase().includes(filtrosAvancados.categoria.toLowerCase())) return false;
-
-    return true;
-  })
-  .sort((a, b) => {
-    if (filtrosAvancados.ordemPreco === "asc") {
-      return Number(a.preco) - Number(b.preco);
-    }
-
-    if (filtrosAvancados.ordemPreco === "desc") {
-      return Number(b.preco) - Number(a.preco);
-    }
-
-    return 0;
-  });
+      return true;
+    })
+    .sort((a, b) => {
+      if (filtrosAvancados.ordemPreco === "asc") return Number(a.preco) - Number(b.preco);
+      if (filtrosAvancados.ordemPreco === "desc") return Number(b.preco) - Number(a.preco);
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-6 py-10 font-sans">
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-10 border-b border-white/5 pb-6">
-
         <div>
           <h1 className="text-2xl md:text-3xl font-light tracking-wide">
             Showroom{" "}
-            <span className="font-medium text-white">
-              INSPIRE AMBIENTES
-            </span>
+            <span className="font-medium text-white">INSPIRE AMBIENTES</span>
           </h1>
-
           <p className="text-sm text-white/40 mt-1">
             Modo de acesso:{" "}
             <span className={role === "admin" ? "text-emerald-400" : "text-white/40"}>
@@ -244,140 +264,96 @@ const produtosFiltrados = produtos
         </button>
       </div>
 
- {/* BUSCA */}
-<input
-  value={busca}
-  onChange={(e) => setBusca(e.target.value)}
-  placeholder="Buscar produtos..."
-  className="w-full mb-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10"
-/>
-
-{/* FILTRO AVANÇADO */}
-<button
-  onClick={() => setMostrarFiltros(!mostrarFiltros)}
-  className="mb-4 px-4 py-2 rounded-full border border-white/10 hover:border-white/30 hover:bg-white/5 text-sm"
->
-  Filtros avançados
-</button>
-
-{/* PAINEL DE FILTROS */}
-{mostrarFiltros && (
-  <div className="mb-6 p-6 rounded-2xl bg-white/5 border border-white/10">
-
-    <div className="grid md:grid-cols-2 gap-4">
-
+      {/* BUSCA */}
       <input
-        placeholder="Preço mínimo"
-        value={filtrosAvancados.precoMin}
-        onChange={(e) =>
-          setFiltrosAvancados({
-            ...filtrosAvancados,
-            precoMin: e.target.value,
-          })
-        }
-        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+        value={busca}
+        onChange={(e) => setBusca(e.target.value)}
+        placeholder="Buscar produtos..."
+        className="w-full mb-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10"
       />
 
-      <input
-        placeholder="Preço máximo"
-        value={filtrosAvancados.precoMax}
-        onChange={(e) =>
-          setFiltrosAvancados({
-            ...filtrosAvancados,
-            precoMax: e.target.value,
-          })
-        }
-        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
-      />
-
-      <input
-        placeholder="Cor"
-        value={filtrosAvancados.cor}
-        onChange={(e) =>
-          setFiltrosAvancados({
-            ...filtrosAvancados,
-            cor: e.target.value,
-          })
-        }
-        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
-      />
-
-      <input
-        placeholder="Material"
-        value={filtrosAvancados.material}
-        onChange={(e) =>
-          setFiltrosAvancados({
-            ...filtrosAvancados,
-            material: e.target.value,
-          })
-        }
-        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
-      />
-
-      <input
-        placeholder="Categoria"
-        value={filtrosAvancados.categoria}
-        onChange={(e) =>
-          setFiltrosAvancados({
-            ...filtrosAvancados,
-            categoria: e.target.value,
-          })
-        }
-        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
-      />
-
-      <select
-        value={filtrosAvancados.ordemPreco}
-        onChange={(e) =>
-          setFiltrosAvancados({
-            ...filtrosAvancados,
-            ordemPreco: e.target.value,
-          })
-        }
-        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+      {/* FILTRO AVANÇADO */}
+      <button
+        onClick={() => setMostrarFiltros(!mostrarFiltros)}
+        className="mb-4 px-4 py-2 rounded-full border border-white/10 hover:border-white/30 hover:bg-white/5 text-sm"
       >
-        <option value="">Ordenar preço</option>
-        <option value="asc">Menor → Maior</option>
-        <option value="desc">Maior → Menor</option>
-      </select>
+        Filtros avançados
+      </button>
 
-    </div>
-  </div>
-)}
+      {/* PAINEL DE FILTROS */}
+      {mostrarFiltros && (
+        <div className="mb-6 p-6 rounded-2xl bg-white/5 border border-white/10">
+          <div className="grid md:grid-cols-2 gap-4">
+            <input
+              placeholder="Preço mínimo"
+              value={filtrosAvancados.precoMin}
+              onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, precoMin: e.target.value })}
+              className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+            />
+            <input
+              placeholder="Preço máximo"
+              value={filtrosAvancados.precoMax}
+              onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, precoMax: e.target.value })}
+              className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+            />
+            <input
+              placeholder="Cor"
+              value={filtrosAvancados.cor}
+              onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, cor: e.target.value })}
+              className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+            />
+            <input
+              placeholder="Material"
+              value={filtrosAvancados.material}
+              onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, material: e.target.value })}
+              className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+            />
+            <input
+              placeholder="Categoria"
+              value={filtrosAvancados.categoria}
+              onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, categoria: e.target.value })}
+              className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+            />
+            <select
+              value={filtrosAvancados.ordemPreco}
+              onChange={(e) => setFiltrosAvancados({ ...filtrosAvancados, ordemPreco: e.target.value })}
+              className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+            >
+              <option value="">Ordenar preço</option>
+              <option value="asc">Menor → Maior</option>
+              <option value="desc">Maior → Menor</option>
+            </select>
+          </div>
+        </div>
+      )}
 
-{/* ADD */}
-{role === "admin" && (
-  <button
-    onClick={() => setMostrarForm(!mostrarForm)}
-    className="mb-8 px-5 py-2 bg-white text-black rounded-full"
-  >
-    + Adicionar produto
-  </button>
-)}
+      {/* ADD */}
+      {role === "admin" && (
+        <button
+          onClick={() => setMostrarForm(!mostrarForm)}
+          className="mb-8 px-5 py-2 bg-white text-black rounded-full"
+        >
+          + Adicionar produto
+        </button>
+      )}
+
       {/* FORM */}
       {mostrarForm && role === "admin" && (
         <div className="mb-10 p-6 rounded-2xl bg-white/5 border border-white/10">
-
           <div className="grid md:grid-cols-2 gap-3">
-            {Object.keys(novoProduto).map((key) => (
+            {Object.keys(novoProduto).map((key) =>
               key !== "tipo" && (
                 <input
                   key={key}
                   placeholder={key}
                   value={novoProduto[key]}
-                  onChange={(e) =>
-                    setNovoProduto({
-                      ...novoProduto,
-                      [key]: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setNovoProduto({ ...novoProduto, [key]: e.target.value })}
                   className="px-3 py-2 rounded-lg bg-black/40 border border-white/10"
                 />
               )
-            ))}
+            )}
           </div>
 
-          {/* 📌 UPLOAD DE IMAGEM (VOLTOU AQUI) */}
           <div className="mt-4">
             <input
               type="file"
@@ -398,14 +374,12 @@ const produtosFiltrados = produtos
 
       {/* GRID */}
       <div className="grid md:grid-cols-3 gap-6">
-
         {produtosFiltrados.map((p) => (
           <div
             key={p.id}
             className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:scale-[1.03] transition duration-300 cursor-pointer"
             onClick={() => setProdutoSelecionado(p)}
           >
-
             <div className="aspect-[4/3] overflow-hidden bg-black">
               <img
                 src={p.imagem}
@@ -415,31 +389,23 @@ const produtosFiltrados = produtos
 
             <div className="p-4">
               <h2 className="text-lg font-light">{p.nome}</h2>
-              <p className="text-white/50 text-sm">R$ {p.preco}</p>
+              {/* ✅ preço formatado nos cards também */}
+              <p className="text-white/50 text-sm">{formatarPreco(p.preco)}</p>
 
               {role === "admin" && (
                 <div className="flex justify-between mt-3">
-
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditandoProduto(p);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setEditandoProduto(p); }}
                     className="text-blue-400 text-xs"
                   >
                     editar
                   </button>
-
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deletarProduto(p);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); deletarProduto(p); }}
                     className="text-red-400 text-xs"
                   >
                     excluir
                   </button>
-
                 </div>
               )}
             </div>
@@ -449,12 +415,14 @@ const produtosFiltrados = produtos
 
       {/* MODAL PRODUTO */}
       {produtoSelecionado && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
-          onClick={() => setProdutoSelecionado(null)}>
-
-          <div className="bg-[#111] max-w-4xl w-full rounded-2xl overflow-hidden border border-white/10"
-            onClick={(e) => e.stopPropagation()}>
-
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+          onClick={() => { setProdutoSelecionado(null); setCopiado(false); }}
+        >
+          <div
+            className="bg-[#111] max-w-4xl w-full rounded-2xl overflow-hidden border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="aspect-[16/9] overflow-hidden">
               <img
                 src={produtoSelecionado.imagem}
@@ -463,11 +431,24 @@ const produtosFiltrados = produtos
             </div>
 
             <div className="p-6 grid md:grid-cols-2 gap-6">
-
               <div>
                 <h2 className="text-2xl font-light">{produtoSelecionado.nome}</h2>
                 <p className="text-white/60 mt-2">{produtoSelecionado.descricao}</p>
-                <p className="mt-4 text-xl">R$ {produtoSelecionado.preco}</p>
+
+                {/* ✅ preço formatado no modal */}
+                <p className="mt-4 text-xl">{formatarPreco(produtoSelecionado.preco)}</p>
+
+                {/* ✅ BOTÃO COPIAR FICHA */}
+                <button
+                  onClick={() => copiarFicha(produtoSelecionado)}
+                  className={`mt-4 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+                    copiado
+                      ? "bg-green-600 border-green-600 text-white"
+                      : "border-white/20 text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  {copiado ? "✅ Copiado!" : "📋 Copiar ficha"}
+                </button>
               </div>
 
               <div className="text-sm space-y-2 text-white/70">
@@ -478,9 +459,7 @@ const produtosFiltrados = produtos
                 <p><b>Indústria:</b> {produtoSelecionado.industria}</p>
                 <p><b>Tipo:</b> {produtoSelecionado.tipo}</p>
               </div>
-
             </div>
-
           </div>
         </div>
       )}
@@ -489,36 +468,24 @@ const produtosFiltrados = produtos
       {editandoProduto && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center">
           <div className="bg-[#111] p-6 rounded-xl w-[500px]">
-
             <h2 className="mb-4">Editar produto</h2>
 
-            {Object.keys(editandoProduto).map((key) => (
+            {Object.keys(editandoProduto).map((key) =>
               key !== "id" && (
                 <input
                   key={key}
                   value={editandoProduto[key] || ""}
-                  onChange={(e) =>
-                    setEditandoProduto({
-                      ...editandoProduto,
-                      [key]: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditandoProduto({ ...editandoProduto, [key]: e.target.value })}
                   className="w-full mb-2 p-2 bg-black"
                   placeholder={key}
                 />
               )
-            ))}
+            )}
 
             <div className="flex justify-between mt-4">
-              <button onClick={() => setEditandoProduto(null)}>
-                Cancelar
-              </button>
-
-              <button onClick={salvarEdicao} className="text-green-400">
-                Salvar
-              </button>
+              <button onClick={() => setEditandoProduto(null)}>Cancelar</button>
+              <button onClick={salvarEdicao} className="text-green-400">Salvar</button>
             </div>
-
           </div>
         </div>
       )}
