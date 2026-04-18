@@ -16,17 +16,30 @@ export default function Catalogo() {
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [editandoProduto, setEditandoProduto] = useState(null);
 
-  const [novoProduto, setNovoProduto] = useState({
-    nome: "",
-    descricao: "",
-    preco: "",
-    categoria: "",
-    cor: "",
-    material: "",
-    medidas: "",
-    tipo: "showroom",
-    industria: "",
-  });
+const [novoProduto, setNovoProduto] = useState({
+  nome: "",
+  descricao: "",
+  preco: "",
+  categoria: "",
+  cor: "",
+  material: "",
+  medidas: "",
+  tipo: "showroom",
+  industria: "",
+});
+
+const [filtrosAvancados, setFiltrosAvancados] = useState({
+  precoMin: "",
+  precoMax: "",
+  cor: "",
+  material: "",
+  medidas: "",
+  industria: "",
+  categoria: "",
+  ordemPreco: "",
+});
+
+const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   // AUTH
   useEffect(() => {
@@ -144,13 +157,35 @@ export default function Catalogo() {
     window.location.href = "/";
   };
 
-  const produtosFiltrados = produtos.filter(
-    (p) =>
-      (p.tipo || "showroom") === aba &&
-      `${p.nome || ""} ${p.descricao || ""} ${p.categoria || ""}`
-        .toLowerCase()
-        .includes(busca.toLowerCase())
-  );
+const produtosFiltrados = produtos
+  .filter((p) => {
+    if ((p.tipo || "showroom") !== aba) return false;
+
+    const texto = `${p.nome || ""} ${p.descricao || ""} ${p.categoria || ""}`
+      .toLowerCase();
+
+    if (!texto.includes(busca.toLowerCase())) return false;
+
+    if (filtrosAvancados.precoMin && Number(p.preco) < Number(filtrosAvancados.precoMin)) return false;
+    if (filtrosAvancados.precoMax && Number(p.preco) > Number(filtrosAvancados.precoMax)) return false;
+
+    if (filtrosAvancados.cor && !p.cor?.toLowerCase().includes(filtrosAvancados.cor.toLowerCase())) return false;
+    if (filtrosAvancados.material && !p.material?.toLowerCase().includes(filtrosAvancados.material.toLowerCase())) return false;
+    if (filtrosAvancados.categoria && !p.categoria?.toLowerCase().includes(filtrosAvancados.categoria.toLowerCase())) return false;
+
+    return true;
+  })
+  .sort((a, b) => {
+    if (filtrosAvancados.ordemPreco === "asc") {
+      return Number(a.preco) - Number(b.preco);
+    }
+
+    if (filtrosAvancados.ordemPreco === "desc") {
+      return Number(b.preco) - Number(a.preco);
+    }
+
+    return 0;
+  });
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-6 py-10 font-sans">
@@ -209,24 +244,116 @@ export default function Catalogo() {
         </button>
       </div>
 
-      {/* BUSCA */}
+ {/* BUSCA */}
+<input
+  value={busca}
+  onChange={(e) => setBusca(e.target.value)}
+  placeholder="Buscar produtos..."
+  className="w-full mb-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+/>
+
+{/* FILTRO AVANÇADO */}
+<button
+  onClick={() => setMostrarFiltros(!mostrarFiltros)}
+  className="mb-4 px-4 py-2 rounded-full border border-white/10 hover:border-white/30 hover:bg-white/5 text-sm"
+>
+  Filtros avançados
+</button>
+
+{/* PAINEL DE FILTROS */}
+{mostrarFiltros && (
+  <div className="mb-6 p-6 rounded-2xl bg-white/5 border border-white/10">
+
+    <div className="grid md:grid-cols-2 gap-4">
+
       <input
-        value={busca}
-        onChange={(e) => setBusca(e.target.value)}
-        placeholder="Buscar produtos..."
-        className="w-full mb-8 px-4 py-3 rounded-xl bg-white/5 border border-white/10"
+        placeholder="Preço mínimo"
+        value={filtrosAvancados.precoMin}
+        onChange={(e) =>
+          setFiltrosAvancados({
+            ...filtrosAvancados,
+            precoMin: e.target.value,
+          })
+        }
+        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
       />
 
-      {/* ADD */}
-      {role === "admin" && (
-        <button
-          onClick={() => setMostrarForm(!mostrarForm)}
-          className="mb-8 px-5 py-2 bg-white text-black rounded-full"
-        >
-          + Adicionar produto
-        </button>
-      )}
+      <input
+        placeholder="Preço máximo"
+        value={filtrosAvancados.precoMax}
+        onChange={(e) =>
+          setFiltrosAvancados({
+            ...filtrosAvancados,
+            precoMax: e.target.value,
+          })
+        }
+        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+      />
 
+      <input
+        placeholder="Cor"
+        value={filtrosAvancados.cor}
+        onChange={(e) =>
+          setFiltrosAvancados({
+            ...filtrosAvancados,
+            cor: e.target.value,
+          })
+        }
+        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+      />
+
+      <input
+        placeholder="Material"
+        value={filtrosAvancados.material}
+        onChange={(e) =>
+          setFiltrosAvancados({
+            ...filtrosAvancados,
+            material: e.target.value,
+          })
+        }
+        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+      />
+
+      <input
+        placeholder="Categoria"
+        value={filtrosAvancados.categoria}
+        onChange={(e) =>
+          setFiltrosAvancados({
+            ...filtrosAvancados,
+            categoria: e.target.value,
+          })
+        }
+        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+      />
+
+      <select
+        value={filtrosAvancados.ordemPreco}
+        onChange={(e) =>
+          setFiltrosAvancados({
+            ...filtrosAvancados,
+            ordemPreco: e.target.value,
+          })
+        }
+        className="px-3 py-2 bg-black/40 border border-white/10 rounded-lg"
+      >
+        <option value="">Ordenar preço</option>
+        <option value="asc">Menor → Maior</option>
+        <option value="desc">Maior → Menor</option>
+      </select>
+
+    </div>
+  </div>
+)}
+
+{/* ADD */}
+{role === "admin" && (
+  <button
+    onClick={() => setMostrarForm(!mostrarForm)}
+    className="mb-8 px-5 py-2 bg-white text-black rounded-full"
+  >
+    + Adicionar produto
+  </button>
+)}
       {/* FORM */}
       {mostrarForm && role === "admin" && (
         <div className="mb-10 p-6 rounded-2xl bg-white/5 border border-white/10">
