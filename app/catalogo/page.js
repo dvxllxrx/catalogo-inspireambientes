@@ -1,8 +1,282 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../../lib/supabase";
 
+// ============================================================
+// ✅ CONFIG DA EMPRESA — altere aqui para cada cliente
+// ============================================================
+const configEmpresa = {
+  nome: "Inspire Ambientes",
+  endereco: "Av. Brasil, 4677 - Centro",
+  whatsapp: "4532273913",
+  horario: "Seg a Sex: 9h às 18h\nSáb: 9h às 13h",
+  mensagemWhats: "Olá! Falei com a SOFIA e desejo saber mais. Algum consultor disponível?",
+  // mapsUrl: "cole aqui o link direto do Maps se preferir",
+};
+// ============================================================
+
+const perguntasAdmin = [
+  "Tem estofado bege abaixo de R$ 15.000?",
+  "Quais produtos são de couro ecológico?",
+  "Me lista os sofás da indústria Buriti",
+  "Qual o produto mais caro do showroom?",
+  "Tem algum sofá maior que 3 metros?",
+];
+
+const perguntasPublico = [
+  "Que tipos de estofados vocês têm?",
+  "Como funciona uma encomenda?",
+  "Vocês têm sofás em couro?",
+  "Qual a faixa de preço dos produtos?",
+  "Como posso visitar o showroom?",
+];
+
+// ============================================================
+// COMPONENTE CHATBOT SOFIA — embutido, sem arquivo separado
+// ============================================================
+function ChatbotSOFIA({ role, produtos, config }) {
+  const [aberto, setAberto] = useState(false);
+  const [aba, setAba] = useState("chat");
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [digitando, setDigitando] = useState(false);
+  const bottomRef = useRef(null);
+
+  const perguntas = role === "admin" ? perguntasAdmin : perguntasPublico;
+
+  const whatsappLink = `https://wa.me/55${config.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(config.mensagemWhats)}`;
+  const mapsLink = config.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(config.endereco)}`;
+
+  useEffect(() => {
+    if (aberto && messages.length === 0) {
+      const boasVindas = role === "admin"
+        ? `Olá! 👋 Sou a **SOFIA**, assistente inteligente da ${config.nome}. Estou com acesso a todos os produtos cadastrados. Como posso te ajudar agora?`
+        : `Olá! Seja bem-vindo à **${config.nome}** ✨\n\nSou a SOFIA, sua assistente virtual. Posso te ajudar a conhecer nossos produtos, tirar dúvidas sobre materiais, medidas, localização e muito mais. O que você gostaria de saber?`;
+      setMessages([{ role: "assistant", content: boasVindas }]);
+    }
+  }, [aberto]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, digitando]);
+
+  const enviar = async (texto) => {
+    const mensagem = texto || input.trim();
+    if (!mensagem || carregando) return;
+
+    setInput("");
+    setCarregando(true);
+    setDigitando(true);
+
+    const novasMessages = [...messages, { role: "user", content: mensagem }];
+    setMessages(novasMessages);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: novasMessages, produtos, role, config }),
+      });
+
+      const data = await res.json();
+      setDigitando(false);
+      setMessages([...novasMessages, {
+        role: "assistant",
+        content: data.resposta || "Desculpe, tive um problema. Tente novamente.",
+      }]);
+    } catch {
+      setDigitando(false);
+      setMessages([...novasMessages, {
+        role: "assistant",
+        content: "Erro de conexão. Verifique sua internet e tente novamente.",
+      }]);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const formatarMsg = (texto) =>
+    texto.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>");
+
+  return (
+    <>
+      {/* BOTÃO FLUTUANTE */}
+      <button
+        onClick={() => setAberto(!aberto)}
+        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+          aberto ? "bg-white/10 border border-white/20" : "bg-gradient-to-br from-cyan-500 to-purple-600 hover:scale-110"
+        }`}
+      >
+        <span className="text-white text-xl">{aberto ? "✕" : "💬"}</span>
+      </button>
+
+      {/* JANELA */}
+      {aberto && (
+        <div className="fixed bottom-24 right-6 z-50 w-[360px] max-h-[600px] flex flex-col rounded-2xl border border-white/10 bg-[#111] shadow-2xl overflow-hidden">
+
+          {/* HEADER */}
+          <div className="px-5 py-4 bg-gradient-to-r from-cyan-500/20 to-purple-600/20 border-b border-white/10 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shrink-0">S</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-medium text-sm">SOFIA</p>
+              <p className="text-white/40 text-xs truncate">{role === "admin" ? "Assistente de catálogo" : config.nome}</p>
+            </div>
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          </div>
+
+          {/* ABAS */}
+          <div className="flex border-b border-white/10 shrink-0">
+            <button
+              onClick={() => setAba("chat")}
+              className={`flex-1 py-2.5 text-xs font-medium transition ${aba === "chat" ? "text-white border-b-2 border-cyan-500" : "text-white/40 hover:text-white/70"}`}
+            >
+              💬 Chat
+            </button>
+            <button
+              onClick={() => setAba("info")}
+              className={`flex-1 py-2.5 text-xs font-medium transition ${aba === "info" ? "text-white border-b-2 border-cyan-500" : "text-white/40 hover:text-white/70"}`}
+            >
+              📍 Localização & Contato
+            </button>
+          </div>
+
+          {/* ABA CHAT */}
+          {aba === "chat" && (
+            <>
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
+                {messages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                        msg.role === "user"
+                          ? "bg-gradient-to-br from-cyan-500 to-purple-600 text-white rounded-br-sm"
+                          : "bg-white/5 border border-white/10 text-white/85 rounded-bl-sm"
+                      }`}
+                      dangerouslySetInnerHTML={{ __html: formatarMsg(msg.content) }}
+                    />
+                  </div>
+                ))}
+
+                {digitando && (
+                  <div className="flex justify-start">
+                    <div className="bg-white/5 border border-white/10 px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1 items-center">
+                      <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
+
+              {messages.length <= 1 && (
+                <div className="px-4 pb-2 flex flex-wrap gap-2 shrink-0">
+                  {perguntas.slice(0, 3).map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => enviar(p)}
+                      className="text-xs px-3 py-1.5 rounded-full border border-white/10 text-white/50 hover:text-white hover:border-white/30 hover:bg-white/5 transition text-left"
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="px-4 py-3 border-t border-white/10 flex gap-2 shrink-0">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && enviar()}
+                  placeholder="Digite sua pergunta..."
+                  disabled={carregando}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition disabled:opacity-50"
+                />
+                <button
+                  onClick={() => enviar()}
+                  disabled={carregando || !input.trim()}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 text-white transition hover:opacity-90 disabled:opacity-30"
+                >
+                  ➤
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ABA INFO */}
+          {aba === "info" && (
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+              <div>
+                <p className="text-white/40 text-xs uppercase tracking-widest mb-1">Empresa</p>
+                <p className="text-white font-medium">{config.nome}</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-lg mt-0.5">📍</span>
+                  <div>
+                    <p className="text-white/40 text-xs mb-0.5">Endereço</p>
+                    <p className="text-white text-sm">{config.endereco}</p>
+                  </div>
+                </div>
+                <a
+                  href={mapsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-400 text-sm font-medium hover:bg-blue-600/30 transition"
+                >
+                  🗺️ Abrir no Google Maps
+                </a>
+              </div>
+
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-lg mt-0.5">📱</span>
+                  <div>
+                    <p className="text-white/40 text-xs mb-0.5">WhatsApp</p>
+                    <p className="text-white text-sm">
+                      {config.whatsapp.replace(/(\d{2})(\d{2})(\d{4,5})(\d{4})/, "+$1 ($2) $3-$4")}
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 text-sm font-medium hover:bg-emerald-600/30 transition"
+                >
+                  💬 Falar com um consultor
+                </a>
+              </div>
+
+              {config.horario && (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg mt-0.5">🕐</span>
+                    <div>
+                      <p className="text-white/40 text-xs mb-0.5">Horário de funcionamento</p>
+                      <p className="text-white text-sm whitespace-pre-line">{config.horario}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-center text-white/30 text-xs pt-2">
+                Ficou com dúvida? Pergunte para a SOFIA no chat 💬
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ============================================================
+// PÁGINA PRINCIPAL
+// ============================================================
 export default function Catalogo() {
   const [produtos, setProdutos] = useState([]);
   const [busca, setBusca] = useState("");
@@ -15,8 +289,6 @@ export default function Catalogo() {
   const [aba, setAba] = useState("showroom");
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [editandoProduto, setEditandoProduto] = useState(null);
-
-  // ✅ NOVO: state do botão copiar
   const [copiado, setCopiado] = useState(false);
 
   const [novoProduto, setNovoProduto] = useState({
@@ -77,14 +349,12 @@ export default function Catalogo() {
     setProdutos(data || []);
   };
 
-  // ✅ NOVO: formata preço em R$ 20.265,00
   const formatarPreco = (valor) =>
     Number(valor).toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     });
 
-  // ✅ NOVO: copia ficha formatada para área de transferência
   const copiarFicha = async (produto) => {
     const texto = `🛋️ *${produto.nome}*
 
@@ -106,7 +376,6 @@ _Inspire Ambientes — inspirados em você._`;
     setTimeout(() => setCopiado(false), 2500);
   };
 
-  // ADD PRODUTO
   const adicionarProduto = async () => {
     try {
       let imageUrl = "https://via.placeholder.com/400x300";
@@ -166,13 +435,11 @@ _Inspire Ambientes — inspirados em você._`;
     }
   };
 
-  // DELETE
   const deletarProduto = async (produto) => {
     await supabase.from("produtos").delete().eq("id", produto.id);
     buscarProdutos();
   };
 
-  // EDIT
   const salvarEdicao = async () => {
     await supabase
       .from("produtos")
@@ -389,7 +656,6 @@ _Inspire Ambientes — inspirados em você._`;
 
             <div className="p-4">
               <h2 className="text-lg font-light">{p.nome}</h2>
-              {/* ✅ preço formatado nos cards também */}
               <p className="text-white/50 text-sm">{formatarPreco(p.preco)}</p>
 
               {role === "admin" && (
@@ -416,13 +682,20 @@ _Inspire Ambientes — inspirados em você._`;
       {/* MODAL PRODUTO */}
       {produtoSelecionado && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-6 z-40"
           onClick={() => { setProdutoSelecionado(null); setCopiado(false); }}
         >
           <div
-            className="bg-[#111] max-w-4xl w-full rounded-2xl overflow-hidden border border-white/10"
+            className="bg-[#111] max-w-4xl w-full rounded-2xl overflow-hidden border border-white/10 relative"
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              onClick={() => { setProdutoSelecionado(null); setCopiado(false); }}
+              className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-white transition"
+            >
+              ✕
+            </button>
+
             <div className="aspect-[16/9] overflow-hidden">
               <img
                 src={produtoSelecionado.imagem}
@@ -434,11 +707,8 @@ _Inspire Ambientes — inspirados em você._`;
               <div>
                 <h2 className="text-2xl font-light">{produtoSelecionado.nome}</h2>
                 <p className="text-white/60 mt-2">{produtoSelecionado.descricao}</p>
-
-                {/* ✅ preço formatado no modal */}
                 <p className="mt-4 text-xl">{formatarPreco(produtoSelecionado.preco)}</p>
 
-                {/* ✅ BOTÃO COPIAR FICHA */}
                 <button
                   onClick={() => copiarFicha(produtoSelecionado)}
                   className={`mt-4 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
@@ -466,9 +736,16 @@ _Inspire Ambientes — inspirados em você._`;
 
       {/* EDIT MODAL */}
       {editandoProduto && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center">
-          <div className="bg-[#111] p-6 rounded-xl w-[500px]">
-            <h2 className="mb-4">Editar produto</h2>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-40">
+          <div className="bg-[#111] p-6 rounded-xl w-[500px] relative">
+            <button
+              onClick={() => setEditandoProduto(null)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/60 border border-white/10 text-white/60 hover:text-white transition"
+            >
+              ✕
+            </button>
+
+            <h2 className="mb-4 text-lg font-light">Editar produto</h2>
 
             {Object.keys(editandoProduto).map((key) =>
               key !== "id" && (
@@ -476,18 +753,33 @@ _Inspire Ambientes — inspirados em você._`;
                   key={key}
                   value={editandoProduto[key] || ""}
                   onChange={(e) => setEditandoProduto({ ...editandoProduto, [key]: e.target.value })}
-                  className="w-full mb-2 p-2 bg-black"
+                  className="w-full mb-2 p-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm"
                   placeholder={key}
                 />
               )
             )}
 
             <div className="flex justify-between mt-4">
-              <button onClick={() => setEditandoProduto(null)}>Cancelar</button>
-              <button onClick={salvarEdicao} className="text-green-400">Salvar</button>
+              <button
+                onClick={() => setEditandoProduto(null)}
+                className="px-4 py-2 rounded-full border border-white/10 text-white/50 hover:text-white text-sm transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={salvarEdicao}
+                className="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm transition"
+              >
+                Salvar alterações
+              </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ✅ SOFIA — embutida, sem import externo */}
+      {role !== null && (
+        <ChatbotSOFIA role={role} produtos={produtos} config={configEmpresa} />
       )}
 
     </div>
