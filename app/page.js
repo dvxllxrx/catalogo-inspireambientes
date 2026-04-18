@@ -70,7 +70,7 @@ export default function Login() {
       </div>
 
       {/* CARD */}
-      <div className="w-full max-w-md p-8 rounded-2xl border border-zinc-800 bg-black/60 backdrop-blur-xl z-10 shadow-2xl">
+      <div className="w-full max-w-md p-8 rounded-2xl border border-zinc-800 bg-black/60 backdrop-blur-xl z-10 shadow-[0_0_40px_rgba(212,175,55,0.08)]">
 
         {/* LOGO SOFIA DIVIDIDO */}
         <h1 className="text-5xl font-bold text-center mb-2 tracking-widest">
@@ -107,7 +107,7 @@ export default function Login() {
         </button>
 
         <p className="text-xs text-center text-zinc-500 mt-6">
-          Powered by Supabase Auth
+          
         </p>
       </div>
 
